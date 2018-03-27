@@ -58,10 +58,10 @@ namespace MakeAMesh.BulkRequest
 
         for (var i = 0; i < count; i++)
         {
-          var success = _queue.TryDequeue(out FunctionPayloadReference singleJson);
+          var success = _queue.TryDequeue(out FunctionPayloadReference functionPayloadReference);
           if (!success) throw new Exception("Dequeue unsuccessful");
 
-          var key = singleJson.Uri;
+          var key = functionPayloadReference.Uri;
 
           List<FunctionPayloadReference> jsonBundle;
           if (dictionaryJsonBundle.ContainsKey(key))
@@ -73,7 +73,7 @@ namespace MakeAMesh.BulkRequest
             jsonBundle = new List<FunctionPayloadReference>();
             dictionaryJsonBundle.Add(key, jsonBundle);
           }
-          jsonBundle?.Add(singleJson);
+          jsonBundle?.Add(functionPayloadReference);
         }
 
         foreach (var keyValuePair in dictionaryJsonBundle)
@@ -85,27 +85,27 @@ namespace MakeAMesh.BulkRequest
       }     
     }
 
-    private string ConstructArrayOfJsonObjects(IEnumerable<FunctionPayloadReference> singleJsons)
+    private string ConstructArrayOfJsonObjects(IEnumerable<FunctionPayloadReference> functionPayloadReferences)
     {
-      return "[" + string.Join(",", singleJsons.Select(x => x.Json)) + "]";
+      return "[" + string.Join(",", functionPayloadReferences.Select(x => x.Json)) + "]";
     }
 
     /// <summary>
     /// Builds a packet per uri from the elements in the queue
     /// </summary>
     /// <param name="uri"></param>
-    /// <param name="singleJsons"></param>
-    private void PostPacket(string uri, IEnumerable<FunctionPayloadReference> singleJsons)
+    /// <param name="functionPayloadReferences"></param>
+    private void PostPacket(string uri, IEnumerable<FunctionPayloadReference> functionPayloadReferences)
     {
-      var singleJsonList = singleJsons.ToList();
+      var functionPayloadReferenceList = functionPayloadReferences.ToList();
 
-      if (singleJsonList.Count == 1)
+      if (functionPayloadReferenceList.Count == 1)
       {
-        SingleRequest(uri, singleJsonList);
+        SingleRequest(uri, functionPayloadReferenceList);
       }
       else
       {
-        MultipleRequest(uri, singleJsonList);
+        MultipleRequest(uri, functionPayloadReferenceList);
       }
     }
 
@@ -113,26 +113,26 @@ namespace MakeAMesh.BulkRequest
     /// Single request sans querystring, uses TaskCompletionSource to trigger the completion of the task
     /// </summary>
     /// <param name="uri"></param>
-    /// <param name="singleJsonList"></param>
-    private static void SingleRequest(string uri, List<FunctionPayloadReference> singleJsonList)
+    /// <param name="functionPayloadReferenceList"></param>
+    private static void SingleRequest(string uri, List<FunctionPayloadReference> functionPayloadReferenceList)
     {
       var request = WebRequest.Create(uri);
       request.ContentType = "application/json";
       request.Headers.Add("api_token", Secrets.ApiToken);
       request.Method = "POST";
 
-      var singleJson = singleJsonList.FirstOrDefault();
+      var functionPayloadReference = functionPayloadReferenceList.FirstOrDefault();
 
       using (var streamWriter = new StreamWriter(request.GetRequestStream()))
       {
-        streamWriter.Write(singleJson?.Json);
+        streamWriter.Write(functionPayloadReference?.Json);
         streamWriter.Flush();
       }
       var response = request.GetResponse();
       using (var streamReader = new StreamReader(response.GetResponseStream()))
       {
         var result = streamReader.ReadToEnd();
-        singleJson?.TaskCompletionSource.SetResult(result);
+        functionPayloadReference?.TaskCompletionSource.SetResult(result);
       }
     }
 
@@ -140,10 +140,10 @@ namespace MakeAMesh.BulkRequest
     /// Multiple request with querystring, uses TaskCompletionSource to trigger the completion of the task
     /// </summary>
     /// <param name="uri"></param>
-    /// <param name="singleJsonList"></param>
-    private void MultipleRequest(string uri, List<FunctionPayloadReference> singleJsonList)
+    /// <param name="functionPayloadReferenceList"></param>
+    private void MultipleRequest(string uri, List<FunctionPayloadReference> functionPayloadReferenceList)
     {
-      var requestString = ConstructArrayOfJsonObjects(singleJsonList);
+      var requestString = ConstructArrayOfJsonObjects(functionPayloadReferenceList);
 
       var request = WebRequest.Create(uri + "?multiple=true");
       request.ContentType = "application/json";
@@ -159,20 +159,20 @@ namespace MakeAMesh.BulkRequest
       using (var streamReader = new StreamReader(response.GetResponseStream()))
       {
         var result = streamReader.ReadToEnd();
-        UnbundleResponseAndSetTaskCompletionSourceResults(result, singleJsonList);
+        UnbundleResponseAndSetTaskCompletionSourceResults(result, functionPayloadReferenceList);
       }
     }
 
-    private void UnbundleResponseAndSetTaskCompletionSourceResults(string result, IEnumerable<FunctionPayloadReference> singleJsons)
+    private void UnbundleResponseAndSetTaskCompletionSourceResults(string result, IEnumerable<FunctionPayloadReference> functionPayloadReferences)
     {
       var resultingObjects = JsonConvert.DeserializeObject<List<object>>(result);
       var count = 0;
-      var singleJsonList = singleJsons.ToList();
+      var functionPayloadReferenceList = functionPayloadReferences.ToList();
 
       foreach (var response in resultingObjects)
       {
-        var singleJson = singleJsonList[count];
-        singleJson.TaskCompletionSource.SetResult(JsonConvert.SerializeObject(response));
+        var functionPayloadReference = functionPayloadReferenceList[count];
+        functionPayloadReference.TaskCompletionSource.SetResult(JsonConvert.SerializeObject(response));
         count++;
       }
     }
