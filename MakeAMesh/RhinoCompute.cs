@@ -1,79 +1,75 @@
 using System;
-using System.IO;
 using Rhino.Geometry;
 using Rhino.Geometry.Intersect;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using MakeAMesh;
+using MakeAMesh.BulkRequest;
 
 namespace Rhino.Compute
 {
     public static class ComputeServer
     {
+        private static BulkRequestService _bulkRequestService;
+
         public static string WebAddress { get; set; } = "https://compute.rhino3d.com";
-        public static string ApiToken { get; set; }
+        public static string ApiToken { get; set; } = Secrets.ApiToken;
+
+        public static void InjectDependencies(BulkRequestService bulkRequestService)
+        {
+            _bulkRequestService = bulkRequestService;
+        }
 
         public static T Post<T>(string function, params object[] postData)
         {
+            if (_bulkRequestService == null)
+                throw new Exception("Pipeline cannot be null!");
             if (string.IsNullOrWhiteSpace(ApiToken))
                 throw new UnauthorizedAccessException("ApiToken must be set");
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
-            if (!function.StartsWith("/"))
-                function = "/" + function;
-            string uri = WebAddress + function;
-            var request = System.Net.WebRequest.Create(uri);
-            request.ContentType = "application/json";
-            request.Headers.Add("api_token", ApiToken);
-            request.Method = "POST";
-            using (var streamWriter = new StreamWriter(request.GetRequestStream()))
-            {
-                streamWriter.Write(json);
-                streamWriter.Flush();
-            }
 
-            var response = request.GetResponse();
-            using (var streamReader = new StreamReader(response.GetResponseStream()))
-            {
-                var result = streamReader.ReadToEnd();
-                var rc = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(result);
-                return rc;
-            }
+            var uri = ConstructUri(function);
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
+
+            //synchronous await for an async task
+            var result = _bulkRequestService.AddItemToRequestService(uri, json).Result;
+
+            return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(result);
         }
 
         public static T0 Post<T0, T1>(string function, out T1 out1, params object[] postData)
         {
+            if (_bulkRequestService == null)
+                throw new Exception("Pipeline cannot be null!");
             if (string.IsNullOrWhiteSpace(ApiToken))
                 throw new UnauthorizedAccessException("ApiToken must be set");
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
+
+            var uri = ConstructUri(function);
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
+
+            //synchronous await for an async task
+            var result = _bulkRequestService.AddItemToRequestService(uri, json).Result;
+
+            var data = Newtonsoft.Json.JsonConvert.DeserializeObject(result);
+            var ja = data as Newtonsoft.Json.Linq.JArray;
+            out1 = ja[1].ToObject<T1>();
+            return ja[0].ToObject<T0>();
+        }
+
+        private static string ConstructUri(string function)
+        {
             if (!function.StartsWith("/"))
                 function = "/" + function;
-            string uri = WebAddress + function;
-            var request = System.Net.WebRequest.Create(uri);
-            request.ContentType = "application/json";
-            request.Headers.Add("api_token", ApiToken);
-            request.Method = "POST";
-            using (var streamWriter = new StreamWriter(request.GetRequestStream()))
-            {
-                streamWriter.Write(json);
-                streamWriter.Flush();
-            }
-
-            var response = request.GetResponse();
-            using (var streamReader = new StreamReader(response.GetResponseStream()))
-            {
-                var jsonString = streamReader.ReadToEnd();
-                object data = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonString);
-                var ja = data as Newtonsoft.Json.Linq.JArray;
-                out1 = ja[1].ToObject<T1>();
-                return ja[0].ToObject<T0>();
-            }
+            var uri = WebAddress + function;
+            return uri;
         }
 
         public static string ApiAddress(Type t, string function)
         {
-            string s = t.ToString().Replace('.', '/');
+            var s = t.ToString().Replace('.', '/');
             return s + "/" + function;
         }
     }
+
 
     public static class BrepCompute
     {

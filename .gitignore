@@ -2,3 +2,5 @@
 /MakeAMesh/.vs
 /MakeAMesh/bin
 /MakeAMesh/obj
+
+/MakeAMesh/Secrets.cs
