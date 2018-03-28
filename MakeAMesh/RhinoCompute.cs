@@ -4,15 +4,199 @@ using Rhino.Geometry;
 using Rhino.Geometry.Intersect;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace Rhino.Compute
 {
+    public class ComputeBlock<T>
+    {
+        public ComputeBlock(string function, string json)
+        {
+            Function = function;
+            JSON = json;
+        }
+
+        public string Function { get; private set; }
+        public string JSON { get; private set; }
+
+        public T Result { get; set; }
+    }
+    public class ComputeBlock<T0,T1>
+    {
+        public ComputeBlock(string function, string json)
+        {
+            Function = function;
+            JSON = json;
+        }
+
+        public string Function { get; private set; }
+        public string JSON { get; private set; }
+
+        public T0 Result0 { get; set; }
+        public T1 Result1 { get; set; }
+    }
+
     public static class ComputeServer
     {
         public static string WebAddress { get; set; } = "https://compute.rhino3d.com";
         public static string ApiToken { get; set; }
 
+        public static ComputeBlock<T> CreateComputeBlock<T>(string function, params object[] postData)
+        {
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
+            if (!function.StartsWith("/"))
+                function = "/" + function;
+            var rc = new ComputeBlock<T>(function, json);
+            return rc;
+        }
+
+        public static ComputeBlock<T0,T1> CreateComputeBlock<T0,T1>(string function, params object[] postData)
+        {
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
+            if (!function.StartsWith("/"))
+                function = "/" + function;
+            var rc = new ComputeBlock<T0,T1>(function, json);
+            return rc;
+        }
+
+        private static System.Net.WebRequest CreateWebRequest(string function, bool multiple, string json)
+        {
+            string uri = WebAddress + function;
+            if( multiple )
+                uri += "?multiple=true";
+            var request = System.Net.WebRequest.Create(uri);
+            request.ContentType = "application/json";
+            request.Headers.Add("api_token", ApiToken);
+            request.Method = "POST";
+            using (var streamWriter = new StreamWriter(request.GetRequestStream()))
+            {
+                streamWriter.Write(json);
+                streamWriter.Flush();
+            }
+            return request;
+        }
+
+        public static void PostMultiple<T>(ComputeBlock<T>[] blocks)
+        {
+            if (blocks.Length < 1)
+                return;
+            if (string.IsNullOrWhiteSpace(ApiToken))
+                throw new UnauthorizedAccessException("ApiToken must be set");
+
+            string function = blocks[0].Function;
+            int start = 0;
+            List<string> jsonItems = new List<string>(blocks.Length);
+            for( int i=0; i<blocks.Length; i++ )
+            {
+                if( string.Equals(function, blocks[i].Function) )
+                {
+                    jsonItems.Add(blocks[i].JSON);
+                    continue;
+                }
+
+                if(jsonItems.Count > 0 )
+                {
+                    string jsonData = "["+string.Join(", ", jsonItems)+"]";
+                    jsonItems.Clear();
+                    var request = CreateWebRequest(function, true, jsonData);
+                    var response = request.GetResponse();
+                    using (var streamReader = new StreamReader(response.GetResponseStream()))
+                    {
+                        var result = streamReader.ReadToEnd();
+                        var rc = Newtonsoft.Json.JsonConvert.DeserializeObject<T[]>(result);
+                        for(int j=start; j<i; j++)
+                        {
+                            blocks[start+j].Result = rc[j];
+                        }
+                    }
+                }
+                start = i + 1;
+            }
+            if (jsonItems.Count > 0)
+            {
+                string jsonData = "[" + string.Join(", ", jsonItems) + "]";
+                jsonItems.Clear();
+                var request = CreateWebRequest(function, true, jsonData);
+                var response = request.GetResponse();
+                using (var streamReader = new StreamReader(response.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+                    var rc = Newtonsoft.Json.JsonConvert.DeserializeObject<T[]>(result);
+                    for (int j = start; j < blocks.Length; j++)
+                    {
+                        blocks[start + j].Result = rc[j];
+                    }
+                }
+            }
+        }
+
+        public static void PostMultiple<T0,T1>(ComputeBlock<T0,T1>[] blocks)
+        {
+            if (blocks.Length < 1)
+                return;
+            if (string.IsNullOrWhiteSpace(ApiToken))
+                throw new UnauthorizedAccessException("ApiToken must be set");
+
+            string function = blocks[0].Function;
+            int start = 0;
+            List<string> jsonItems = new List<string>(blocks.Length);
+            for (int i = 0; i < blocks.Length; i++)
+            {
+                if (string.Equals(function, blocks[i].Function))
+                {
+                    jsonItems.Add(blocks[i].JSON);
+                    continue;
+                }
+
+                if (jsonItems.Count > 0)
+                {
+                    string jsonData = "[" + string.Join(", ", jsonItems) + "]";
+                    jsonItems.Clear();
+                    var request = CreateWebRequest(function, true, jsonData);
+                    var response = request.GetResponse();
+                    using (var streamReader = new StreamReader(response.GetResponseStream()))
+                    {
+                        var result = streamReader.ReadToEnd();
+                        object data = Newtonsoft.Json.JsonConvert.DeserializeObject(result);
+                        var ja = data as Newtonsoft.Json.Linq.JArray;
+                        for (int j = start; j < i; j++)
+                        {
+                            var subArray = ja[j - start] as Newtonsoft.Json.Linq.JArray;
+                            blocks[j].Result0 = subArray[0].ToObject<T0>();
+                            blocks[j].Result1 = subArray[1].ToObject<T1>();
+                        }
+                    }
+                }
+                start = i + 1;
+            }
+            if (jsonItems.Count > 0)
+            {
+                string jsonData = "[" + string.Join(", ", jsonItems) + "]";
+                jsonItems.Clear();
+                var request = CreateWebRequest(function, true, jsonData);
+                var response = request.GetResponse();
+                using (var streamReader = new StreamReader(response.GetResponseStream()))
+                {
+                    var result = streamReader.ReadToEnd();
+                    object data = Newtonsoft.Json.JsonConvert.DeserializeObject(result);
+                    var ja = data as Newtonsoft.Json.Linq.JArray;
+                    for (int j = start; j < blocks.Length; j++)
+                    {
+                        var subArray = ja[j - start] as Newtonsoft.Json.Linq.JArray;
+                        blocks[j].Result0 = subArray[0].ToObject<T0>();
+                        blocks[j].Result1 = subArray[1].ToObject<T1>();
+                    }
+                }
+            }
+        }
+
+
         public static T Post<T>(string function, params object[] postData)
+        {
+            return PostAsync<T>(function, postData).Result;
+        }
+
+        public static async Task<T> PostAsync<T>(string function, params object[] postData)
         {
             if (string.IsNullOrWhiteSpace(ApiToken))
                 throw new UnauthorizedAccessException("ApiToken must be set");
@@ -30,7 +214,7 @@ namespace Rhino.Compute
                 streamWriter.Flush();
             }
 
-            var response = request.GetResponse();
+            var response = await request.GetResponseAsync();
             using (var streamReader = new StreamReader(response.GetResponseStream()))
             {
                 var result = streamReader.ReadToEnd();
@@ -41,6 +225,13 @@ namespace Rhino.Compute
 
         public static T0 Post<T0, T1>(string function, out T1 out1, params object[] postData)
         {
+            var rc = PostAsync<T0, T1>(function, postData);
+            out1 = rc.Result.Item2;
+            return rc.Result.Item1;
+        }
+
+        public static async Task<Tuple<T0,T1>> PostAsync<T0, T1>(string function, params object[] postData)
+        {
             if (string.IsNullOrWhiteSpace(ApiToken))
                 throw new UnauthorizedAccessException("ApiToken must be set");
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
@@ -57,14 +248,13 @@ namespace Rhino.Compute
                 streamWriter.Flush();
             }
 
-            var response = request.GetResponse();
+            var response = await request.GetResponseAsync();
             using (var streamReader = new StreamReader(response.GetResponseStream()))
             {
                 var jsonString = streamReader.ReadToEnd();
                 object data = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonString);
                 var ja = data as Newtonsoft.Json.Linq.JArray;
-                out1 = ja[1].ToObject<T1>();
-                return ja[0].ToObject<T0>();
+                return new Tuple<T0,T1>(ja[0].ToObject<T0>(), ja[1].ToObject<T1>());
             }
         }
 
@@ -77,8 +267,10 @@ namespace Rhino.Compute
 
     public static class BrepCompute
     {
-        static string ApiAddress([CallerMemberName] string caller = null)
+        static string ApiAddress(int trim = 0, [CallerMemberName] string caller = null)
         {
+            if (trim > 0)
+                caller = caller.Substring(0, caller.Length - trim);
             return ComputeServer.ApiAddress(typeof(Brep), caller);
         }
         /// <summary>
@@ -1143,6 +1335,16 @@ namespace Rhino.Compute
         {
             return ComputeServer.Post<double>(ApiAddress(), brep);
         }
+
+        public static Task<double> GetVolumeAsync(this Brep brep)
+        {
+            return ComputeServer.PostAsync<double>(ApiAddress("Async".Length), brep);
+        }
+
+        public static ComputeBlock<double> GetVolumeBulk(this Brep brep)
+        {
+            return ComputeServer.CreateComputeBlock<double>(ApiAddress("Bulk".Length), brep);
+        }
         /// <summary>
         /// Compute the Volume of the Brep. If you want proper Volume data with moments 
         /// and error information, use the VolumeMassProperties class.
@@ -1189,10 +1391,13 @@ namespace Rhino.Compute
 
     public static class CurveCompute
     {
-        static string ApiAddress([CallerMemberName] string caller = null)
+        static string ApiAddress(int trim = 0, [CallerMemberName] string caller = null)
         {
+            if (trim > 0)
+                caller = caller.Substring(0, caller.Length - trim);
             return ComputeServer.ApiAddress(typeof(Curve), caller);
         }
+
         /// <summary>
         /// Returns the type of conic section based on the curve's shape.
         /// </summary>
@@ -2992,8 +3197,10 @@ namespace Rhino.Compute
 
     public static class MeshCompute
     {
-        static string ApiAddress([CallerMemberName] string caller = null)
+        static string ApiAddress(int trim = 0, [CallerMemberName] string caller = null)
         {
+            if (trim > 0)
+                caller = caller.Substring(0, caller.Length - trim);
             return ComputeServer.ApiAddress(typeof(Mesh), caller);
         }
         /// <summary>
@@ -3201,6 +3408,17 @@ namespace Rhino.Compute
         {
             return ComputeServer.Post<Mesh[]>(ApiAddress(), brep);
         }
+
+        public static Task<Mesh[]> CreateFromBrepAsync(Brep brep)
+        {
+            return ComputeServer.PostAsync<Mesh[]>(ApiAddress("Async".Length), brep);
+        }
+
+        public static ComputeBlock<Mesh[]> CreateFromBrepBulk(Brep brep)
+        {
+            return ComputeServer.CreateComputeBlock<Mesh[]>(ApiAddress("Bulk".Length), brep);
+        }
+
         /// <summary>
         /// Constructs a mesh from a brep.
         /// </summary>
@@ -3673,8 +3891,10 @@ namespace Rhino.Compute.Intersect
 {
     public static class IntersectionCompute
     {
-        static string ApiAddress([CallerMemberName] string caller = null)
+        static string ApiAddress(int trim = 0, [CallerMemberName] string caller = null)
         {
+            if (trim > 0)
+                caller = caller.Substring(0, caller.Length - trim);
             return ComputeServer.ApiAddress(typeof(Intersection), caller);
         }
         /// <summary>
@@ -3796,6 +4016,17 @@ namespace Rhino.Compute.Intersect
         {
             return ComputeServer.Post<bool, double[]>(ApiAddress(), out t, curve, brep, tolerance, angleTolerance);
         }
+
+        public static Task<Tuple<bool, double[]>> CurveBrepAsync(Curve curve, Brep brep, double tolerance, double angleTolerance)
+        {
+            return ComputeServer.PostAsync<bool, double[]>(ApiAddress("Async".Length), curve, brep, tolerance, angleTolerance);
+        }
+
+        public static ComputeBlock<bool, double[]> CurveBrepBulk(Curve curve, Brep brep, double tolerance, double angleTolerance)
+        {
+            return ComputeServer.CreateComputeBlock<bool, double[]>(ApiAddress("Bulk".Length), curve, brep, tolerance, angleTolerance);
+        }
+
         /// <summary>
         /// Quickly intersects two meshes. Overlaps and near misses are ignored.
         /// </summary>
