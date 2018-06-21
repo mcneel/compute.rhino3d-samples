@@ -1,4 +1,4 @@
-/MakeAMesh/packages
-/MakeAMesh/.vs
-/MakeAMesh/bin
-/MakeAMesh/obj
+packages/
+.vs/
+bin/
+obj/

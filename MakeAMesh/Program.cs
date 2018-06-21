@@ -7,7 +7,7 @@ namespace MakeAMesh
     {
         static void Main(string[] args)
         {
-            ComputeServer.ApiToken = enter_your_email_address;
+            ComputeServer.ApiToken = "steve@mcneel.com";
             var sphere = new Rhino.Geometry.Sphere(Rhino.Geometry.Point3d.Origin, 12);
             var sphereAsBrep = sphere.ToBrep();
             // above uses standard Rhino3dmIO methods locally
