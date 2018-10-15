@@ -8,21 +8,22 @@ namespace CircleIntersection
     {
         static void Main(string[] args)
         {
-            Rhino.Compute.ComputeServer.ApiToken = "circleintersectionsample@mcneel.com";
+            // TODO: Add authorization token here
+            Rhino.Compute.ComputeServer.AuthToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwIjoiUEtDUyM3IiwiYyI6IkFFU18yNTZfQ0JDIiwiYjY0aXYiOiJlVzhjRlpBSERGck9Rd1Z6U29xLzV3PT0iLCJiNjRjdCI6IkhuT3JlMkhvN3NTN3lwNWhJeXp3RjVWREhZQktTOXE2bXAxdFEzdUtzRTVMUC9Pc0U1SW92ZkY3Wm51eWwrVHU2ZVNoU29oNHpDQllsMkdyaDgrTk9qeEwvMStOMGxUalliSGJnUjZXZjB6cTk5RjlyYnk2VTdpa3B6R3RTWjlJYU9ZTGM4Y3oyd09CNDNnT2RhRTR1Vmd2N2xibENES3l5TFVRRHBoQWYxdmRjMzFzZXBnamNZY2ROUzdiOFRmajJpNTZMWXZBWXFreEE3ZzA5NUVteGc9PSIsImlhdCI6MTUzOTYzNjk4NH0.civ70EztOyxY58lFaBC8LkLQDKnHKeFznwwv0FWj2LA";
 
-            // create a couple Circles using a local copy of Rhino3dmIo
+            // Create a couple circles using a local copy of Rhino3dmIo
             var c1 = new Circle(new Point3d(0, 0, 0), 100);
             var c2 = new Circle(new Point3d(30, 30, 0), 70);
 
-            // call compute to perform a curve boolean operation
+            // Call compute to perform a curve boolean operation
             var intersectionCurves = Rhino.Compute.CurveCompute.CreateBooleanIntersection(c1.ToNurbsCurve(), c2.ToNurbsCurve());
             Mesh[] intersectionMeshes = null;
             if (intersectionCurves != null)
             {
-                // use local Rhino3dmIo to create a Brep from the curves
+                // Use local Rhino3dmIo to create a Brep from the curves
                 var brep = Brep.CreateTrimmedPlane(c1.Plane, intersectionCurves);
 
-                // call compute to mesh the Brep
+                // Call compute to mesh the Brep
                 intersectionMeshes = Rhino.Compute.MeshCompute.CreateFromBrep(brep, MeshingParameters.FastRenderMesh);
             }
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using Rhino.Geometry;
 using Rhino.Geometry.Intersect;
@@ -10,19 +10,19 @@ namespace Rhino.Compute
     public static class ComputeServer
     {
         public static string WebAddress { get; set; } = "https://compute.rhino3d.com";
-        public static string ApiToken { get; set; }
+        public static string AuthToken { get; set; }
 
         public static T Post<T>(string function, params object[] postData)
         {
-            if (string.IsNullOrWhiteSpace(ApiToken))
-                throw new UnauthorizedAccessException("ApiToken must be set");
+            if (string.IsNullOrWhiteSpace(AuthToken))
+                throw new UnauthorizedAccessException("AuthToken must be set");
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
             if (!function.StartsWith("/"))
                 function = "/" + function;
-            string uri = WebAddress + function;
+            string uri = (WebAddress + function).ToLower();
             var request = System.Net.WebRequest.Create(uri);
             request.ContentType = "application/json";
-            request.Headers.Add("api_token", ApiToken);
+            request.Headers.Add("Authorization", "Bearer " + AuthToken);
             request.Method = "POST";
             using (var streamWriter = new StreamWriter(request.GetRequestStream()))
             {
@@ -41,15 +41,15 @@ namespace Rhino.Compute
 
         public static T0 Post<T0, T1>(string function, out T1 out1, params object[] postData)
         {
-            if (string.IsNullOrWhiteSpace(ApiToken))
-                throw new UnauthorizedAccessException("ApiToken must be set");
+            if (string.IsNullOrWhiteSpace(AuthToken))
+                throw new UnauthorizedAccessException("AuthToken must be set");
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(postData);
             if (!function.StartsWith("/"))
                 function = "/" + function;
-            string uri = WebAddress + function;
+            string uri = (WebAddress + function).ToLower();
             var request = System.Net.WebRequest.Create(uri);
             request.ContentType = "application/json";
-            request.Headers.Add("api_token", ApiToken);
+            request.Headers.Add("Authorization", "Bearer " + AuthToken);
             request.Method = "POST";
             using (var streamWriter = new StreamWriter(request.GetRequestStream()))
             {
@@ -72,6 +72,22 @@ namespace Rhino.Compute
         {
             string s = t.ToString().Replace('.', '/');
             return s + "/" + function;
+        }
+    }
+
+    public static class ExtrusionCompute
+    {
+        static string ApiAddress([CallerMemberName] string caller = null)
+        {
+            return ComputeServer.ApiAddress(typeof(Extrusion), caller);
+        }
+        /// <summary>
+        /// Constructs all the Wireframe curves for this Extrusion.
+        /// </summary>
+        /// <returns>An array of Wireframe curves.</returns>
+        public static Curve[] GetWireframe(this Extrusion extrusion)
+        {
+            return ComputeServer.Post<Curve[]>(ApiAddress(), extrusion);
         }
     }
 
@@ -152,6 +168,34 @@ namespace Rhino.Compute
         public static Brep CreateBaseballSphere(Point3d center, double radius, double tolerance)
         {
             return ComputeServer.Post<Brep>(ApiAddress(), center, radius, tolerance);
+        }
+        /// <summary>
+        /// Creates a single developable surface between two curves.
+        /// </summary>
+        /// <param name="crv0">The first rail curve.</param>
+        /// <param name="crv1">The second rail curve.</param>
+        /// <param name="reverse0">Reverse the first rail curve.</param>
+        /// <param name="reverse1">Reverse the second rail curve</param>
+        /// <param name="density">The number of rulings across the surface.</param>
+        /// <returns>The output Breps if successful, otherwise an empty array.</returns>
+        public static Brep[] CreateDevelopableLoft(Curve crv0, Curve crv1, bool reverse0, bool reverse1, int density)
+        {
+            return ComputeServer.Post<Brep[]>(ApiAddress(), crv0, crv1, reverse0, reverse1, density);
+        }
+        /// <summary>
+        /// Creates a single developable surface between two curves.
+        /// </summary>
+        /// <param name="rail0">The first rail curve.</param>
+        /// <param name="rail1">The second rail curve.</param>
+        /// <param name="fixedRulings">
+        /// Rulings define lines across the surface that define the straight sections on the developable surface,
+        /// where rulings[i].X = parameter on first rail curve, and rulings[i].Y = parameter on second rail curve.
+        /// Note, rulings will be automatically adjusted to minimum twist.
+        /// </param>
+        /// <returns>The output Breps if successful, otherwise an empty array.</returns>
+        public static Brep[] CreateDevelopableLoft(NurbsCurve rail0, NurbsCurve rail1, IEnumerable<Point2d> fixedRulings)
+        {
+            return ComputeServer.Post<Brep[]>(ApiAddress(), rail0, rail1, fixedRulings);
         }
         /// <summary>
         /// Constructs a set of planar breps as outlines by the loops.
@@ -1059,11 +1103,30 @@ namespace Rhino.Compute
         /// <summary>
         /// Merges adjacent coplanar faces into single faces.
         /// </summary>
-        /// <param name="tolerance">3d tolerance for determining when edges are adjacent.</param>
-        /// <returns>true if faces were merged.  false if no faces were merged.</returns>
+        /// <param name="tolerance">
+        /// Tolerance for determining when edges are adjacent.
+        /// When in doubt, use the document's ModelAbsoluteTolerance property.
+        /// </param>
+        /// <returns>true if faces were merged, false if no faces were merged.</returns>
         public static bool MergeCoplanarFaces(this Brep brep, out Brep updatedInstance, double tolerance)
         {
             return ComputeServer.Post<bool, Brep>(ApiAddress(), out updatedInstance, brep, tolerance);
+        }
+        /// <summary>
+        /// Merges adjacent coplanar faces into single faces.
+        /// </summary>
+        /// <param name="tolerance">
+        /// Tolerance for determining when edges are adjacent.
+        /// When in doubt, use the document's ModelAbsoluteTolerance property.
+        /// </param>
+        /// <param name="angleTolerance">
+        /// Angle tolerance, in radians, for determining when faces are parallel.
+        /// When in doubt, use the document's ModelAngleToleranceRadians property.
+        /// </param>
+        /// <returns>true if faces were merged, false if no faces were merged.</returns>
+        public static bool MergeCoplanarFaces(this Brep brep, out Brep updatedInstance, double tolerance, double angleTolerance)
+        {
+            return ComputeServer.Post<bool, Brep>(ApiAddress(), out updatedInstance, brep, tolerance, angleTolerance);
         }
         /// <summary>
         /// Splits a Brep into pieces.
@@ -1249,6 +1312,16 @@ namespace Rhino.Compute
         public static Brep RemoveHoles(this Brep brep, double tolerance)
         {
             return ComputeServer.Post<Brep>(ApiAddress(), brep, tolerance);
+        }
+        /// <summary>
+        /// Removes inner loops, or holes, in a Brep.
+        /// </summary>
+        /// <param name="loops">A list of BrepLoop component indexes, where BrepLoop.LoopType == Rhino.Geometry.BrepLoopType.Inner.</param>
+        /// <param name="tolerance">The tolerance. When in doubt, use the document's model absolute tolerance.</param>
+        /// <returns>The Brep without holes if successful, null otherwise.</returns>
+        public static Brep RemoveHoles(this Brep brep, IEnumerable<ComponentIndex> loops, double tolerance)
+        {
+            return ComputeServer.Post<Brep>(ApiAddress(), brep, loops, tolerance);
         }
     }
 
@@ -2991,6 +3064,7 @@ namespace Rhino.Compute
         {
             return ComputeServer.Post<Curve[]>(ApiAddress(), curve, surface, curveParameters, offsetDistances, fittingTolerance);
         }
+
         /// <summary>
         /// Finds a curve by offsetting an existing curve normal to a surface.
         /// The caller is responsible for ensuring that the curve lies on the input surface.
@@ -3005,22 +3079,6 @@ namespace Rhino.Compute
         public static Curve OffsetNormalToSurface(this Curve curve, Surface surface, double height)
         {
             return ComputeServer.Post<Curve>(ApiAddress(), curve, surface, height);
-        }
-    }
-
-    public static class ExtrusionCompute
-    {
-        static string ApiAddress([CallerMemberName] string caller = null)
-        {
-            return ComputeServer.ApiAddress(typeof(Extrusion), caller);
-        }
-        /// <summary>
-        /// Constructs all the Wireframe curves for this Extrusion.
-        /// </summary>
-        /// <returns>An array of Wireframe curves.</returns>
-        public static Curve[] GetWireframe(this Extrusion extrusion)
-        {
-            return ComputeServer.Post<Curve[]>(ApiAddress(), extrusion);
         }
     }
 
@@ -3158,15 +3216,26 @@ namespace Rhino.Compute
         {
             return ComputeServer.Post<Mesh>(ApiAddress(), cylinder, vertical, around);
         }
-        /// <summary>Constructs a mesh cone</summary>
+        /// <summary>Constructs a solid mesh cone.</summary>
         /// <param name="cone"></param>
-        /// <param name="vertical">Number of faces in the top-to-bottom direction</param>
-        /// <param name="around">Number of faces around the cone</param>
+        /// <param name="vertical">Number of faces in the top-to-bottom direction.</param>
+        /// <param name="around">Number of faces around the cone.</param>
         /// <exception cref="ArgumentException">Thrown when cone is invalid.</exception>
-        /// <returns></returns>
+        /// <returns>A valid mesh if successful.</returns>
         public static Mesh CreateFromCone(Cone cone, int vertical, int around)
         {
             return ComputeServer.Post<Mesh>(ApiAddress(), cone, vertical, around);
+        }
+        /// <summary>Constructs a mesh cone.</summary>
+        /// <param name="cone"></param>
+        /// <param name="vertical">Number of faces in the top-to-bottom direction.</param>
+        /// <param name="around">Number of faces around the cone.</param>
+        /// <param name="solid">If false the mesh will be open with no faces on the circular planar portion.</param>
+        /// <exception cref="ArgumentException">Thrown when cone is invalid.</exception>
+        /// <returns>A valid mesh if successful.</returns>
+        public static Mesh CreateFromCone(Cone cone, int vertical, int around, bool solid)
+        {
+            return ComputeServer.Post<Mesh>(ApiAddress(), cone, vertical, around, solid);
         }
         /// <summary>
         /// Do not use this overload. Use version that takes a tolerance parameter instead.
@@ -3366,13 +3435,14 @@ namespace Rhino.Compute
         {
             return ComputeServer.Post<Mesh[]>(ApiAddress(), meshesToSplit, meshSplitters);
         }
+
         /// <summary>
         /// Compute volume of the mesh. 
         /// </summary>
         /// <returns>Volume of the mesh.</returns>
-        public static double Volume(this Mesh thisMesh)
+        public static double Volume(this Mesh mesh)
         {
-            return ComputeServer.Post<double>(ApiAddress(), thisMesh);
+            return ComputeServer.Post<double>(ApiAddress(), mesh);
         }
         /// <summary>
         /// Makes sure that faces sharing an edge and having a difference of normal greater
@@ -3384,9 +3454,9 @@ namespace Rhino.Compute
         /// Determines whether new vertex normals will have the same vertex normal as the original (false)
         /// or vertex normals made from the corrsponding face normals (true)
         /// </param>
-        public static Mesh Unweld(this Mesh thisMesh, double angleToleranceRadians, bool modifyNormals)
+        public static Mesh Unweld(this Mesh mesh, double angleToleranceRadians, bool modifyNormals)
         {
-            return ComputeServer.Post<Mesh>(ApiAddress(), thisMesh, angleToleranceRadians, modifyNormals);
+            return ComputeServer.Post<Mesh>(ApiAddress(), mesh, angleToleranceRadians, modifyNormals);
         }
         /// <summary>
         /// Adds creases to a smooth mesh by creating coincident vertices along selected edges.
@@ -3397,9 +3467,9 @@ namespace Rhino.Compute
         /// If false, each of the vertex normals on either side of the edge is assigned the same value as the original normal that the pair is replacing, keeping a smooth look.
         /// </param>
         /// <returns>true if successful, false otherwise.</returns>
-        public static bool UnweldEdge(this Mesh thisMesh, out Mesh updatedInstance, IEnumerable<int> edgeIndices, bool modifyNormals)
+        public static bool UnweldEdge(this Mesh mesh, out Mesh updatedInstance, IEnumerable<int> edgeIndices, bool modifyNormals)
         {
-            return ComputeServer.Post<bool, Mesh>(ApiAddress(), out updatedInstance, thisMesh, edgeIndices, modifyNormals);
+            return ComputeServer.Post<bool, Mesh>(ApiAddress(), out updatedInstance, mesh, edgeIndices, modifyNormals);
         }
         /// <summary>
         /// Makes sure that faces sharing an edge and having a difference of normal greater
@@ -3407,26 +3477,26 @@ namespace Rhino.Compute
         /// are averaged.
         /// </summary>
         /// <param name="angleToleranceRadians">Angle at which to weld vertices.</param>
-        public static Mesh Weld(this Mesh thisMesh, double angleToleranceRadians)
+        public static Mesh Weld(this Mesh mesh, double angleToleranceRadians)
         {
-            return ComputeServer.Post<Mesh>(ApiAddress(), thisMesh, angleToleranceRadians);
+            return ComputeServer.Post<Mesh>(ApiAddress(), mesh, angleToleranceRadians);
         }
         /// <summary>
         /// Removes mesh normals and reconstructs the face and vertex normals based
         /// on the orientation of the faces.
         /// </summary>
-        public static Mesh RebuildNormals(this Mesh thisMesh)
+        public static Mesh RebuildNormals(this Mesh mesh)
         {
-            return ComputeServer.Post<Mesh>(ApiAddress(), thisMesh);
+            return ComputeServer.Post<Mesh>(ApiAddress(), mesh);
         }
         /// <summary>
         /// Extracts, or removes, non-manifold mesh edges. 
         /// </summary>
         /// <param name="selective">If true, then extract hanging faces only.</param>
         /// <returns>A mesh containing the extracted non-manifold parts if successful, null otherwise.</returns>
-        public static Mesh ExtractNonManifoldEdges(this Mesh thisMesh, out Mesh updatedInstance, bool selective)
+        public static Mesh ExtractNonManifoldEdges(this Mesh mesh, out Mesh updatedInstance, bool selective)
         {
-            return ComputeServer.Post<Mesh, Mesh>(ApiAddress(), out updatedInstance, thisMesh, selective);
+            return ComputeServer.Post<Mesh, Mesh>(ApiAddress(), out updatedInstance, mesh, selective);
         }
         /// <summary>
         /// Attempts to "heal" naked edges in a mesh based on a given distance.  
@@ -3437,9 +3507,9 @@ namespace Rhino.Compute
         /// </summary>
         /// <param name="distance">Distance to not exceed when modifying the mesh.</param>
         /// <returns>true if successful, false otherwise.</returns>
-        public static bool HealNakedEdges(this Mesh thisMesh, out Mesh updatedInstance, double distance)
+        public static bool HealNakedEdges(this Mesh mesh, out Mesh updatedInstance, double distance)
         {
-            return ComputeServer.Post<bool, Mesh>(ApiAddress(), out updatedInstance, thisMesh, distance);
+            return ComputeServer.Post<bool, Mesh>(ApiAddress(), out updatedInstance, mesh, distance);
         }
         /// <summary>
         /// Attempts to determine "holes" in the mesh by chaining naked edges together. 
@@ -3449,9 +3519,9 @@ namespace Rhino.Compute
         /// <remarks>This function does not differentiate between inner and outer naked edges.  
         /// If you need that, it would be better to use Mesh.FillHole.
         /// </remarks>
-        public static bool FillHoles(this Mesh thisMesh, out Mesh updatedInstance)
+        public static bool FillHoles(this Mesh mesh, out Mesh updatedInstance)
         {
-            return ComputeServer.Post<bool, Mesh>(ApiAddress(), out updatedInstance, thisMesh);
+            return ComputeServer.Post<bool, Mesh>(ApiAddress(), out updatedInstance, mesh);
         }
         /// <summary>
         /// Given a starting "naked" edge index, this function attempts to determine a "hole"
@@ -3460,9 +3530,9 @@ namespace Rhino.Compute
         /// </summary>
         /// <param name="topologyEdgeIndex">Starting naked edge index.</param>
         /// <returns>true if successful, false otherwise.</returns>
-        public static bool FileHole(this Mesh thisMesh, out Mesh updatedInstance, int topologyEdgeIndex)
+        public static bool FileHole(this Mesh mesh, out Mesh updatedInstance, int topologyEdgeIndex)
         {
-            return ComputeServer.Post<bool, Mesh>(ApiAddress(), out updatedInstance, thisMesh, topologyEdgeIndex);
+            return ComputeServer.Post<bool, Mesh>(ApiAddress(), out updatedInstance, mesh, topologyEdgeIndex);
         }
         /// <summary>
         /// Attempts to fix inconsistencies in the directions of mesh faces in a mesh. This function
@@ -3471,9 +3541,9 @@ namespace Rhino.Compute
         /// to recompute vertex normals after calling this functions.
         /// </summary>
         /// <returns>number of faces that were modified.</returns>
-        public static int UnifyNormals(this Mesh thisMesh, out Mesh updatedInstance)
+        public static int UnifyNormals(this Mesh mesh, out Mesh updatedInstance)
         {
-            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, thisMesh);
+            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, mesh);
         }
         /// <summary>
         /// Attempts to fix inconsistencies in the directions of mesh faces in a mesh. This function
@@ -3483,26 +3553,26 @@ namespace Rhino.Compute
         /// </summary>
         /// <param name="countOnly">If true, then only the number of faces that would be modified is determined.</param>
         /// <returns>If countOnly=false, the number of faces that were modified. If countOnly=true, the number of faces that would be modified.</returns>
-        public static int UnifyNormals(this Mesh thisMesh, out Mesh updatedInstance, bool countOnly)
+        public static int UnifyNormals(this Mesh mesh, out Mesh updatedInstance, bool countOnly)
         {
-            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, thisMesh, countOnly);
+            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, mesh, countOnly);
         }
         /// <summary>
         /// Splits up the mesh into its unconnected pieces.
         /// </summary>
         /// <returns>An array containing all the disjoint pieces that make up this Mesh.</returns>
-        public static Mesh[] SplitDisjointPieces(this Mesh thisMesh)
+        public static Mesh[] SplitDisjointPieces(this Mesh mesh)
         {
-            return ComputeServer.Post<Mesh[]>(ApiAddress(), thisMesh);
+            return ComputeServer.Post<Mesh[]>(ApiAddress(), mesh);
         }
         /// <summary>
         /// Split a mesh by an infinite plane.
         /// </summary>
         /// <param name="plane">The splitting plane.</param>
         /// <returns>A new mesh array with the split result. This can be null if no result was found.</returns>
-        public static Mesh[] Split(this Mesh thisMesh, Plane plane)
+        public static Mesh[] Split(this Mesh mesh, Plane plane)
         {
-            return ComputeServer.Post<Mesh[]>(ApiAddress(), thisMesh, plane);
+            return ComputeServer.Post<Mesh[]>(ApiAddress(), mesh, plane);
         }
         /// <summary>
         /// Split a mesh with another mesh.
@@ -3518,18 +3588,18 @@ namespace Rhino.Compute
         /// </summary>
         /// <param name="meshes">Meshes to split with.</param>
         /// <returns>An array of mesh segments representing the split result.</returns>
-        public static Mesh[] Split(this Mesh thisMesh, IEnumerable<Mesh> meshes)
+        public static Mesh[] Split(this Mesh mesh, IEnumerable<Mesh> meshes)
         {
-            return ComputeServer.Post<Mesh[]>(ApiAddress(), thisMesh, meshes);
+            return ComputeServer.Post<Mesh[]>(ApiAddress(), mesh, meshes);
         }
         /// <summary>
         /// Constructs the outlines of a mesh projected against a plane.
         /// </summary>
         /// <param name="plane">A plane to project against.</param>
         /// <returns>An array of polylines, or null on error.</returns>
-        public static Polyline[] GetOutlines(this Mesh thisMesh, Plane plane)
+        public static Polyline[] GetOutlines(this Mesh mesh, Plane plane)
         {
-            return ComputeServer.Post<Polyline[]>(ApiAddress(), thisMesh, plane);
+            return ComputeServer.Post<Polyline[]>(ApiAddress(), mesh, plane);
         }
         /// <summary>
         /// Returns all edges of a mesh that are considered "naked" in the
@@ -3541,9 +3611,9 @@ namespace Rhino.Compute
         /// <code source='examples\cs\ex_dupmeshboundary.cs' lang='cs'/>
         /// <code source='examples\py\ex_dupmeshboundary.py' lang='py'/>
         /// </example>
-        public static Polyline[] GetNakedEdges(this Mesh thisMesh)
+        public static Polyline[] GetNakedEdges(this Mesh mesh)
         {
-            return ComputeServer.Post<Polyline[]>(ApiAddress(), thisMesh);
+            return ComputeServer.Post<Polyline[]>(ApiAddress(), mesh);
         }
         /// <summary>
         /// Explode the mesh into submeshes where a submesh is a collection of faces that are contained
@@ -3554,18 +3624,18 @@ namespace Rhino.Compute
         /// Array of submeshes on success; null on error. If the count in the returned array is 1, then
         /// nothing happened and the ouput is essentially a copy of the input.
         /// </returns>
-        public static Mesh[] ExplodeAtUnweldedEdges(this Mesh thisMesh)
+        public static Mesh[] ExplodeAtUnweldedEdges(this Mesh mesh)
         {
-            return ComputeServer.Post<Mesh[]>(ApiAddress(), thisMesh);
+            return ComputeServer.Post<Mesh[]>(ApiAddress(), mesh);
         }
         /// <summary>
         /// Gets the point on the mesh that is closest to a given test point.
         /// </summary>
         /// <param name="testPoint">Point to seach for.</param>
         /// <returns>The point on the mesh closest to testPoint, or Point3d.Unset on failure.</returns>
-        public static Point3d ClosestPoint(this Mesh thisMesh, Point3d testPoint)
+        public static Point3d ClosestPoint(this Mesh mesh, Point3d testPoint)
         {
-            return ComputeServer.Post<Point3d>(ApiAddress(), thisMesh, testPoint);
+            return ComputeServer.Post<Point3d>(ApiAddress(), mesh, testPoint);
         }
         /// <summary>
         /// Gets the point on the mesh that is closest to a given test point. Similar to the 
@@ -3581,9 +3651,9 @@ namespace Rhino.Compute
         /// This parameter is ignored if you pass 0.0 for a maximumDistance.
         /// </param>
         /// <returns>closest point information on success. null on failure.</returns>
-        public static MeshPoint ClosestMeshPoint(this Mesh thisMesh, Point3d testPoint, double maximumDistance)
+        public static MeshPoint ClosestMeshPoint(this Mesh mesh, Point3d testPoint, double maximumDistance)
         {
-            return ComputeServer.Post<MeshPoint>(ApiAddress(), thisMesh, testPoint, maximumDistance);
+            return ComputeServer.Post<MeshPoint>(ApiAddress(), mesh, testPoint, maximumDistance);
         }
         /// <summary>
         /// Gets the point on the mesh that is closest to a given test point.
@@ -3601,18 +3671,18 @@ namespace Rhino.Compute
         /// Index of face that the closest point lies on if successful. 
         /// -1 if not successful; the value of pointOnMesh is undefined.
         /// </returns>
-        public static int ClosestPoint(this Mesh thisMesh, Point3d testPoint, out Point3d pointOnMesh, double maximumDistance)
+        public static int ClosestPoint(this Mesh mesh, Point3d testPoint, out Point3d pointOnMesh, double maximumDistance)
         {
-            return ComputeServer.Post<int, Point3d>(ApiAddress(), out pointOnMesh, thisMesh, testPoint, maximumDistance);
+            return ComputeServer.Post<int, Point3d>(ApiAddress(), out pointOnMesh, mesh, testPoint, maximumDistance);
         }
         /// <summary>
         /// Evaluate a mesh at a set of barycentric coordinates.
         /// </summary>
         /// <param name="meshPoint">MeshPoint instance contiaining a valid Face Index and Barycentric coordinates.</param>
         /// <returns>A Point on the mesh or Point3d.Unset if the faceIndex is not valid or if the barycentric coordinates could not be evaluated.</returns>
-        public static Point3d PointAt(this Mesh thisMesh, MeshPoint meshPoint)
+        public static Point3d PointAt(this Mesh mesh, MeshPoint meshPoint)
         {
-            return ComputeServer.Post<Point3d>(ApiAddress(), thisMesh, meshPoint);
+            return ComputeServer.Post<Point3d>(ApiAddress(), mesh, meshPoint);
         }
         /// <summary>
         /// Evaluates a mesh at a set of barycentric coordinates. Barycentric coordinates must 
@@ -3624,18 +3694,18 @@ namespace Rhino.Compute
         /// <param name="t2">Third barycentric coordinate.</param>
         /// <param name="t3">Fourth barycentric coordinate. If the face is a triangle, this coordinate will be ignored.</param>
         /// <returns>A Point on the mesh or Point3d.Unset if the faceIndex is not valid or if the barycentric coordinates could not be evaluated.</returns>
-        public static Point3d PointAt(this Mesh thisMesh, int faceIndex, double t0, double t1, double t2, double t3)
+        public static Point3d PointAt(this Mesh mesh, int faceIndex, double t0, double t1, double t2, double t3)
         {
-            return ComputeServer.Post<Point3d>(ApiAddress(), thisMesh, faceIndex, t0, t1, t2, t3);
+            return ComputeServer.Post<Point3d>(ApiAddress(), mesh, faceIndex, t0, t1, t2, t3);
         }
         /// <summary>
         /// Evaluate a mesh normal at a set of barycentric coordinates.
         /// </summary>
         /// <param name="meshPoint">MeshPoint instance contiaining a valid Face Index and Barycentric coordinates.</param>
         /// <returns>A Normal vector to the mesh or Vector3d.Unset if the faceIndex is not valid or if the barycentric coordinates could not be evaluated.</returns>
-        public static Vector3d NormalAt(this Mesh thisMesh, MeshPoint meshPoint)
+        public static Vector3d NormalAt(this Mesh mesh, MeshPoint meshPoint)
         {
-            return ComputeServer.Post<Vector3d>(ApiAddress(), thisMesh, meshPoint);
+            return ComputeServer.Post<Vector3d>(ApiAddress(), mesh, meshPoint);
         }
         /// <summary>
         /// Evaluate a mesh normal at a set of barycentric coordinates. Barycentric coordinates must 
@@ -3647,18 +3717,18 @@ namespace Rhino.Compute
         /// <param name="t2">Third barycentric coordinate.</param>
         /// <param name="t3">Fourth barycentric coordinate. If the face is a triangle, this coordinate will be ignored.</param>
         /// <returns>A Normal vector to the mesh or Vector3d.Unset if the faceIndex is not valid or if the barycentric coordinates could not be evaluated.</returns>
-        public static Vector3d NormalAt(this Mesh thisMesh, int faceIndex, double t0, double t1, double t2, double t3)
+        public static Vector3d NormalAt(this Mesh mesh, int faceIndex, double t0, double t1, double t2, double t3)
         {
-            return ComputeServer.Post<Vector3d>(ApiAddress(), thisMesh, faceIndex, t0, t1, t2, t3);
+            return ComputeServer.Post<Vector3d>(ApiAddress(), mesh, faceIndex, t0, t1, t2, t3);
         }
         /// <summary>
         /// Pulls a collection of points to a mesh.
         /// </summary>
         /// <param name="points">An array, a list or any enumerable set of points.</param>
         /// <returns>An array of points. This can be empty.</returns>
-        public static Point3d[] PullPointsToMesh(this Mesh thisMesh, IEnumerable<Point3d> points)
+        public static Point3d[] PullPointsToMesh(this Mesh mesh, IEnumerable<Point3d> points)
         {
-            return ComputeServer.Post<Point3d[]>(ApiAddress(), thisMesh, points);
+            return ComputeServer.Post<Point3d[]>(ApiAddress(), mesh, points);
         }
         /// <summary>
         /// Makes a new mesh with vertices offset a distance in the opposite direction of the existing vertex normals.
@@ -3666,9 +3736,9 @@ namespace Rhino.Compute
         /// </summary>
         /// <param name="distance">A distance value to use for offsetting.</param>
         /// <returns>A new mesh on success, or null on failure.</returns>
-        public static Mesh Offset(this Mesh thisMesh, double distance)
+        public static Mesh Offset(this Mesh mesh, double distance)
         {
-            return ComputeServer.Post<Mesh>(ApiAddress(), thisMesh, distance);
+            return ComputeServer.Post<Mesh>(ApiAddress(), mesh, distance);
         }
         /// <summary>
         /// Makes a new mesh with vertices offset a distance in the opposite direction of the existing vertex normals.
@@ -3678,9 +3748,9 @@ namespace Rhino.Compute
         /// <param name="distance">A distance value.</param>
         /// <param name="solidify">true if the mesh should be solidified.</param>
         /// <returns>A new mesh on success, or null on failure.</returns>
-        public static Mesh Offset(this Mesh thisMesh, double distance, bool solidify)
+        public static Mesh Offset(this Mesh mesh, double distance, bool solidify)
         {
-            return ComputeServer.Post<Mesh>(ApiAddress(), thisMesh, distance, solidify);
+            return ComputeServer.Post<Mesh>(ApiAddress(), mesh, distance, solidify);
         }
         /// <summary>
         /// Makes a new mesh with vertices offset a distance along the direction parameter.
@@ -3691,9 +3761,9 @@ namespace Rhino.Compute
         /// <param name="solidify">true if the mesh should be solidified.</param>
         /// <param name="direction">Direction of offset for all vertices.</param>
         /// <returns>A new mesh on success, or null on failure.</returns>
-        public static Mesh Offset(this Mesh thisMesh, double distance, bool solidify, Vector3d direction)
+        public static Mesh Offset(this Mesh mesh, double distance, bool solidify, Vector3d direction)
         {
-            return ComputeServer.Post<Mesh>(ApiAddress(), thisMesh, distance, solidify, direction);
+            return ComputeServer.Post<Mesh>(ApiAddress(), mesh, distance, solidify, direction);
         }
         /// <summary>
         /// Collapses multiple mesh faces, with greater/less than edge length, based on the principles 
@@ -3707,9 +3777,9 @@ namespace Rhino.Compute
         /// This number may differ from the initial number of edges that meet
         /// the input criteria because the lengths of some initial edges may be altered as other edges are collapsed.
         /// </remarks>
-        public static int CollapseFacesByEdgeLength(this Mesh thisMesh, out Mesh updatedInstance, bool bGreaterThan, double edgeLength)
+        public static int CollapseFacesByEdgeLength(this Mesh mesh, out Mesh updatedInstance, bool bGreaterThan, double edgeLength)
         {
-            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, thisMesh, bGreaterThan, edgeLength);
+            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, mesh, bGreaterThan, edgeLength);
         }
         /// <summary>
         /// Collapses multiple mesh faces, with areas less than LessThanArea and greater than GreaterThanArea, 
@@ -3725,9 +3795,9 @@ namespace Rhino.Compute
         /// The face area must be both less than LessThanArea AND greater than GreaterThanArea in order to be considered.  
         /// Use large numbers for lessThanArea or zero for greaterThanArea to simulate an OR.
         /// </remarks>
-        public static int CollapseFacesByArea(this Mesh thisMesh, out Mesh updatedInstance, double lessThanArea, double greaterThanArea)
+        public static int CollapseFacesByArea(this Mesh mesh, out Mesh updatedInstance, double lessThanArea, double greaterThanArea)
         {
-            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, thisMesh, lessThanArea, greaterThanArea);
+            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, mesh, lessThanArea, greaterThanArea);
         }
         /// <summary>
         /// Collapses a multiple mesh faces, determined by face aspect ratio, based on criteria found in Stan Melax's polygon reduction,
@@ -3739,9 +3809,9 @@ namespace Rhino.Compute
         /// This number may differ from the initial number of faces that meet 
         /// the input criteria because the aspect ratios of some initial faces may be altered as other faces are collapsed.
         /// </remarks>
-        public static int CollapseFacesByByAspectRatio(this Mesh thisMesh, out Mesh updatedInstance, double aspectRatio)
+        public static int CollapseFacesByByAspectRatio(this Mesh mesh, out Mesh updatedInstance, double aspectRatio)
         {
-            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, thisMesh, aspectRatio);
+            return ComputeServer.Post<int, Mesh>(ApiAddress(), out updatedInstance, mesh, aspectRatio);
         }
         /// <summary>
         /// Constructs new mesh from the current one, with edge softening applied to it.
@@ -3755,11 +3825,10 @@ namespace Rhino.Compute
         /// <returns>A new mesh with soft edges.</returns>
         /// <exception cref="InvalidOperationException">If displacement failed
         /// because of an error. The exception message specifies the error.</exception>
-        public static Mesh WithEdgeSoftening(this Mesh thisMesh, double softeningRadius, bool chamfer, bool faceted, bool force, double angleThreshold)
+        public static Mesh WithEdgeSoftening(this Mesh mesh, double softeningRadius, bool chamfer, bool faceted, bool force, double angleThreshold)
         {
-            return ComputeServer.Post<Mesh>(ApiAddress(), thisMesh, softeningRadius, chamfer, faceted, force, angleThreshold);
+            return ComputeServer.Post<Mesh>(ApiAddress(), mesh, softeningRadius, chamfer, faceted, force, angleThreshold);
         }
-
     }
 
     public static class NurbsCurveCompute
