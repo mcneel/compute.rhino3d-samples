@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>CircleIntersection</RootNamespace>
     <AssemblyName>CircleIntersection</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
