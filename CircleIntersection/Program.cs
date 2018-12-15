@@ -9,7 +9,7 @@ namespace CircleIntersection
         static void Main(string[] args)
         {
             // TODO: Add authorization token here
-            Rhino.Compute.ComputeServer.AuthToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwIjoiUEtDUyM3IiwiYyI6IkFFU18yNTZfQ0JDIiwiYjY0aXYiOiJlVzhjRlpBSERGck9Rd1Z6U29xLzV3PT0iLCJiNjRjdCI6IkhuT3JlMkhvN3NTN3lwNWhJeXp3RjVWREhZQktTOXE2bXAxdFEzdUtzRTVMUC9Pc0U1SW92ZkY3Wm51eWwrVHU2ZVNoU29oNHpDQllsMkdyaDgrTk9qeEwvMStOMGxUalliSGJnUjZXZjB6cTk5RjlyYnk2VTdpa3B6R3RTWjlJYU9ZTGM4Y3oyd09CNDNnT2RhRTR1Vmd2N2xibENES3l5TFVRRHBoQWYxdmRjMzFzZXBnamNZY2ROUzdiOFRmajJpNTZMWXZBWXFreEE3ZzA5NUVteGc9PSIsImlhdCI6MTUzOTYzNjk4NH0.civ70EztOyxY58lFaBC8LkLQDKnHKeFznwwv0FWj2LA";
+            Rhino.Compute.ComputeServer.AuthToken = "<Add authorization token here>";
 
             // Create a couple circles using a local copy of Rhino3dmIo
             var c1 = new Circle(new Point3d(0, 0, 0), 100);
