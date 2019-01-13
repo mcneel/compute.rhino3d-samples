@@ -22,21 +22,18 @@ namespace BrepBooleanOperation
             Brep[] sphereBrep = new Brep[] { sphere.ToBrep() };
 
             const double tolerance = 1.0e-8;
-            {
-                List<Brep> allBreps = new List<Brep>();
-                allBreps.AddRange(cubeBrep);
-                allBreps.AddRange(sphereBrep);
-                Brep[] union = BrepCompute.CreateBooleanUnion(allBreps, tolerance);
-                ExportBrepsToObj("cube_sphere_union.obj", union);
-            }
-            {
-                Brep[] intersection = BrepCompute.CreateBooleanIntersection(cubeBrep, sphereBrep, tolerance);
-                ExportBrepsToObj("cube_sphere_intersection.obj", intersection);
-            }
-            {
-                Brep[] difference = BrepCompute.CreateBooleanDifference(cubeBrep, sphereBrep, tolerance);
-                ExportBrepsToObj("cube_sphere_difference.obj", difference);
-            }
+
+            List<Brep> allBreps = new List<Brep>();
+            allBreps.AddRange(cubeBrep);
+            allBreps.AddRange(sphereBrep);
+            Brep[] union = BrepCompute.CreateBooleanUnion(allBreps, tolerance);
+            ExportBrepsToObj("cube_sphere_union.obj", union);
+
+            Brep[] intersection = BrepCompute.CreateBooleanIntersection(cubeBrep, sphereBrep, tolerance);
+            ExportBrepsToObj("cube_sphere_intersection.obj", intersection);
+
+            Brep[] difference = BrepCompute.CreateBooleanDifference(cubeBrep, sphereBrep, tolerance);
+            ExportBrepsToObj("cube_sphere_difference.obj", difference);
         }
 
         static void ExportBrepsToObj(string filePath, IEnumerable<Brep> breps)
