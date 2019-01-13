@@ -55,6 +55,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\RhinoCompute\AuthToken.cs">
+      <Link>AuthToken.cs</Link>
+    </Compile>
     <Compile Include="..\RhinoCompute\RhinoCompute.cs">
       <Link>RhinoCompute.cs</Link>
     </Compile>

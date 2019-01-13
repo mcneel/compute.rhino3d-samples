@@ -7,8 +7,7 @@ namespace MakeAMesh
     {
         static void Main(string[] args)
         {
-            // TODO: Add authorization token here
-            ComputeServer.AuthToken = "<Add authorization token here>";
+            ComputeServer.AuthToken = Rhino.Compute.AuthToken.Get ();
 
             // Use standard Rhino3dmIO methods locally
             var sphere = new Rhino.Geometry.Sphere(Rhino.Geometry.Point3d.Origin, 12);
