@@ -39,11 +39,6 @@ namespace BrepBooleanOperation
             }
         }
 
-        static void CubeSphereBooleanOperations ()
-        {
-
-        }
-
         static void ExportBrepsToObj(string filePath, IEnumerable<Brep> breps)
         {
             List<Mesh> meshes = new List<Mesh> ();
