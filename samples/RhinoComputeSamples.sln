@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CircleIntersection", "Circl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MakeAMesh", "MakeAMesh\MakeAMesh.csproj", "{868C2076-A9E5-4BDA-9CC0-B6EBA85B23A6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrepBooleanOperation", "BrepBooleanOperation\BrepBooleanOperation.csproj", "{14C9031A-219E-4560-B670-A0C373393B8D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{868C2076-A9E5-4BDA-9CC0-B6EBA85B23A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{868C2076-A9E5-4BDA-9CC0-B6EBA85B23A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{868C2076-A9E5-4BDA-9CC0-B6EBA85B23A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14C9031A-219E-4560-B670-A0C373393B8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14C9031A-219E-4560-B670-A0C373393B8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14C9031A-219E-4560-B670-A0C373393B8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14C9031A-219E-4560-B670-A0C373393B8D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
