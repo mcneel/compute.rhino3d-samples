@@ -21,7 +21,7 @@ namespace MakeAMesh
             Console.WriteLine($"Got {meshes.Length} meshes");
             for (int i = 0; i < meshes.Length; i++)
             {
-                Console.WriteLine($"  {i + 1} mesh has {meshes[i].Vertices.Count} vrtices");
+                Console.WriteLine($"  {i + 1} mesh has {meshes[i].Vertices.Count} vertices");
             }
 
             Console.WriteLine("Press any key to exit");
