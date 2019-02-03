@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MakeAMesh", "MakeAMesh\Make
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrepBooleanOperation", "BrepBooleanOperation\BrepBooleanOperation.csproj", "{14C9031A-219E-4560-B670-A0C373393B8D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NurbsTesselation", "NurbsTesselation\NurbsTesselation.csproj", "{455CE382-5BB7-476A-9B6F-5B24CBD3261F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{14C9031A-219E-4560-B670-A0C373393B8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{14C9031A-219E-4560-B670-A0C373393B8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{14C9031A-219E-4560-B670-A0C373393B8D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{455CE382-5BB7-476A-9B6F-5B24CBD3261F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{455CE382-5BB7-476A-9B6F-5B24CBD3261F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{455CE382-5BB7-476A-9B6F-5B24CBD3261F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{455CE382-5BB7-476A-9B6F-5B24CBD3261F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
