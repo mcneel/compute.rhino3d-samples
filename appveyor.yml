@@ -1,0 +1,7 @@
+version: '{build}'
+image: Visual Studio 2017
+before_build:
+- cmd: nuget restore samples/RhinoComputeSamples.sln
+build:
+  project: samples/RhinoComputeSamples.sln
+  verbosity: minimal
