@@ -4,17 +4,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{14C9031A-219E-4560-B670-A0C373393B8D}</ProjectGuid>
+    <ProjectGuid>{455CE382-5BB7-476A-9B6F-5B24CBD3261F}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>BrepBooleanOperation</RootNamespace>
-    <AssemblyName>BrepBooleanOperation</AssemblyName>
+    <RootNamespace>NurbsTesselation</RootNamespace>
+    <AssemblyName>NurbsTesselation</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -41,7 +39,6 @@
     </Reference>
     <Reference Include="Rhino3dmIO, Version=6.0.0.1, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Rhino3dmIO.Desktop.6.11.18348.17061\lib\net45\Rhino3dmIO.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -56,10 +53,12 @@
     <Compile Include="..\RhinoCompute\AuthToken.cs">
       <Link>AuthToken.cs</Link>
     </Compile>
+    <Compile Include="..\RhinoCompute\ObjExport.cs">
+      <Link>ObjExport.cs</Link>
+    </Compile>
     <Compile Include="..\RhinoCompute\RhinoCompute.cs">
       <Link>RhinoCompute.cs</Link>
     </Compile>
-    <Compile Include="ObjExport.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
