@@ -13,7 +13,8 @@ namespace NurbsTesselation
     {
         static void Main(string[] args)
         {
-            ComputeServer.AuthToken = Rhino.Compute.AuthToken.Get();
+            ComputeServer.WebAddress = "http://localhost:8081/";
+            // ComputeServer.ApiKey = "";
 
             Curve curveA = Curve.CreateControlPointCurve(new Point3d[] {
                 new Point3d (0.0, 0.0, 0.0),

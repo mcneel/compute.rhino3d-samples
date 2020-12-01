@@ -13,7 +13,8 @@ namespace BrepBooleanOperation
     {
         static void Main(string[] args)
         {
-            ComputeServer.AuthToken = Rhino.Compute.AuthToken.Get();
+            ComputeServer.WebAddress = "http://localhost:8081/";
+            // ComputeServer.ApiKey = "";
 
             var cube = new Box(new BoundingBox(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5));
             var sphere = new Sphere(new Point3d(0.5, 0.5, 0.5), 0.8);

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text;
 using Rhino.Geometry;
+using Rhino.Compute;
 
 namespace CircleIntersection
 {
@@ -8,7 +9,8 @@ namespace CircleIntersection
     {
         static void Main(string[] args)
         {
-            Rhino.Compute.ComputeServer.AuthToken = Rhino.Compute.AuthToken.Get();
+            ComputeServer.WebAddress = "http://localhost:8081/";
+            // ComputeServer.ApiKey = "";
 
             // Create a couple circles using a local copy of Rhino3dmIo
             var c1 = new Circle(new Point3d(0, 0, 0), 100);
@@ -19,7 +21,7 @@ namespace CircleIntersection
             Mesh[] intersectionMeshes = null;
             if (intersectionCurves != null)
             {
-                // Use local Rhino3dmIo to create a Brep from the curves
+                // Use local Rhino3dm to create a Brep from the curves
                 var brep = Brep.CreateTrimmedPlane(c1.Plane, intersectionCurves);
 
                 // Call compute to mesh the Brep

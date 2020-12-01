@@ -7,14 +7,16 @@ namespace MakeAMesh
     {
         static void Main(string[] args)
         {
-            ComputeServer.AuthToken = Rhino.Compute.AuthToken.Get ();
 
-            // Use standard Rhino3dmIO methods locally
+            ComputeServer.WebAddress = "http://localhost:8081/";
+            // ComputeServer.ApiKey = "";
+
+            // Use standard Rhino3dm methods locally
             var sphere = new Rhino.Geometry.Sphere(Rhino.Geometry.Point3d.Origin, 12);
             var sphereAsBrep = sphere.ToBrep();
 
-            // The following function calls compute.rhino3d.com to get access to something not
-            // available in Rhino3dmIO
+            // The following function calls your Rhino.Compute server to get access to something not
+            // available in Rhino3dm
             var meshes = MeshCompute.CreateFromBrep(sphereAsBrep);
 
             // Back to regular Rhino3dmIO local calls
